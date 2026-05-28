@@ -1,7 +1,8 @@
 import React from 'react';
-import type { RoomData, SpeakerGroupData, SpeakerData } from '../types';
-import { Settings, Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity } from 'lucide-react';
-import { generateLineArray, generateEndfireArray, generateArcDelayArray } from '../utils/presets';
+import type { RoomData, SpeakerGroupData, SpeakerData, SimulationQuality } from '../types';
+import { Settings, Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity, ChevronDown, ChevronRight, Globe, AlertTriangle } from 'lucide-react';
+import { generateLineArray, generateEndfireArray, generateArcDelayArray, generateFestival, generateDiveBar, generateLecture } from '../utils/presets';
+import type { GlobalEnvironment } from '../utils/presets';
 
 interface UIOverlayProps {
   room: RoomData;
@@ -12,6 +13,7 @@ interface UIOverlayProps {
   updateSpeakerInGroup: (groupId: string, speakerId: string, updates: Partial<SpeakerData>) => void;
   addGroup: (group?: SpeakerGroupData) => void;
   removeGroup: (id: string) => void;
+  loadGlobalPreset: (env: GlobalEnvironment) => void;
   steadyState: boolean;
   setSteadyState: (v: boolean) => void;
   visMode: 'single-plane' | '3-planes' | 'volumetric';
@@ -26,12 +28,24 @@ interface UIOverlayProps {
   setFreqFilterTarget: (v: number) => void;
   freqFilterBandwidth: number;
   setFreqFilterBandwidth: (v: number) => void;
+  quality: SimulationQuality;
+  setQuality: (q: SimulationQuality) => void;
 }
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
-  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth
+  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, loadGlobalPreset, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth, quality, setQuality
 }) => {
   const [splayAngle, setSplayAngle] = React.useState(2);
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set());
+
+  const toggleGroupCollapse = (id: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="w-80 bg-slate-800/90 backdrop-blur border-l border-slate-700 h-full overflow-y-auto flex flex-col p-6 shadow-2xl">
@@ -56,6 +70,19 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
             >
               {steadyState ? 'Steady State' : 'Moving Waves'}
             </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-400">Quality</span>
+            <select 
+              value={quality} 
+              onChange={e => setQuality(e.target.value as SimulationQuality)}
+              className="bg-slate-700 text-xs px-2 py-1 rounded text-white border-none outline-none"
+            >
+              <option value="low">Low (Fast)</option>
+              <option value="medium">Medium</option>
+              <option value="high">High (Heavy)</option>
+            </select>
           </div>
 
           <div className="flex items-center justify-between">
@@ -188,11 +215,49 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
           </div>
         </section>
 
-        {/* Presets */}
+        {/* Global Environments */}
+        <section className="bg-amber-900/20 p-4 rounded-xl border border-amber-700/30 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Globe className="w-4 h-4 text-amber-500" />
+            <h2 className="font-semibold text-amber-500">Global Environments</h2>
+          </div>
+          <div className="flex items-start gap-2 bg-amber-500/10 p-2 rounded text-amber-200/70 text-[10px] leading-tight">
+            <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5 text-amber-500" />
+            <p>Warning: Loading an environment will wipe your current room and speaker setup.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-2">
+            <button 
+              onClick={() => { if(confirm("This will erase your current setup. Proceed?")) loadGlobalPreset(generateFestival()) }}
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-300 text-xs font-medium py-2 px-3 rounded transition-all text-left"
+            >
+              <div className="text-amber-400 font-semibold mb-0.5">Outdoor Festival</div>
+              <div className="text-[10px] text-slate-500">Huge field, L/R Flown Line Arrays, Arc Delay Subs</div>
+            </button>
+
+            <button 
+              onClick={() => { if(confirm("This will erase your current setup. Proceed?")) loadGlobalPreset(generateDiveBar()) }}
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-300 text-xs font-medium py-2 px-3 rounded transition-all text-left"
+            >
+              <div className="text-amber-400 font-semibold mb-0.5">The Dive Bar</div>
+              <div className="text-[10px] text-slate-500">Tight, reflective walls, stereo mains & corner sub</div>
+            </button>
+
+            <button 
+              onClick={() => { if(confirm("This will erase your current setup. Proceed?")) loadGlobalPreset(generateLecture()) }}
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-300 text-xs font-medium py-2 px-3 rounded transition-all text-left"
+            >
+              <div className="text-amber-400 font-semibold mb-0.5">Small Lecture Hall</div>
+              <div className="text-[10px] text-slate-500">Acoustic tiles, central cardioid cluster</div>
+            </button>
+          </div>
+        </section>
+
+        {/* Local Presets */}
         <section className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Volume2 className="w-4 h-4 text-purple-400" />
-            <h2 className="font-semibold text-slate-200">Acoustic Presets</h2>
+            <h2 className="font-semibold text-slate-200">Local Array Presets</h2>
           </div>
           
           <div className="space-y-3">
@@ -245,26 +310,40 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
           </div>
 
           <div className="space-y-3">
-            {speakerGroups.map((group, index) => (
+            {speakerGroups.map((group, index) => {
+              const isCollapsed = collapsedGroups.has(group.id);
+              return (
               <div 
                 key={group.id} 
                 className={`bg-slate-800 rounded-lg border overflow-hidden transition-colors ${selectedGroupId === group.id ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-slate-700'}`}
               >
-                <div className="flex items-center justify-between bg-slate-900/50 p-2 border-b border-slate-700/50">
+                <div 
+                  className="flex items-center justify-between bg-slate-900/50 p-2 border-b border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors"
+                  onClick={() => toggleGroupCollapse(group.id)}
+                >
                   <div className="flex items-center gap-2">
+                    {isCollapsed ? (
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    )}
                     <div className={`w-2 h-2 rounded-full ${selectedGroupId === group.id ? 'bg-blue-500' : 'bg-slate-600'}`} />
                     <span className="text-xs font-medium text-slate-300">{group.name} ({group.speakers.length})</span>
                   </div>
                   <button 
-                    onClick={() => removeGroup(group.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeGroup(group.id);
+                    }}
                     className="text-slate-500 hover:text-red-400 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="p-3 space-y-4">
-                  {/* Group Rotation Control */}
+                {!isCollapsed && (
+                  <div className="p-3 space-y-4">
+                    {/* Group Rotation Control */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
                       <span>Array Rotation (Y)</span>
@@ -351,8 +430,9 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                     </div>
                   ))}
                 </div>
+                )}
               </div>
-            ))}
+            )})}
             
             {speakerGroups.length === 0 && (
               <div className="text-center py-8 text-slate-500 text-sm">

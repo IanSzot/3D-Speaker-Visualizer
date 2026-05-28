@@ -1,8 +1,9 @@
-import type { RoomData, SpeakerData, VirtualSource } from '../types';
+import type { RoomData, SpeakerData, VirtualSource, SimulationQuality } from '../types';
+import { MAX_SOURCES } from '../components/SoundWaveShaderMaterial';
 import * as THREE from 'three';
 
 // Generate virtual sources based on the 1st order Image Source Method
-export function generateVirtualSources(speakers: SpeakerData[], room: RoomData): VirtualSource[] {
+export function generateVirtualSources(speakers: SpeakerData[], room: RoomData, quality: SimulationQuality = 'medium'): VirtualSource[] {
   const virtualSources: VirtualSource[] = [];
 
   // Half dimensions of the room
@@ -39,6 +40,9 @@ export function generateVirtualSources(speakers: SpeakerData[], room: RoomData):
     // 0: Original source
     addSource([...position], 1.0);
 
+    // If quality is low, don't generate any reflections
+    if (quality === 'low') return;
+
     // 1st order reflections
     const reflAmp = 1.0 - room.absorption;
     
@@ -55,5 +59,10 @@ export function generateVirtualSources(speakers: SpeakerData[], room: RoomData):
     addSource([ position[0], position[1], -hD - (hD + position[2]) ], reflAmp);
   });
 
-  return virtualSources;
+  // Sort by highest amplitude first to prioritize the most important sources if we hit the limit
+  virtualSources.sort((a, b) => b.amplitude - a.amplitude);
+
+  // Return only up to MAX_SOURCES (or fewer if medium/low) to prevent shader uniform overflow
+  const limit = quality === 'high' ? MAX_SOURCES : 50;
+  return virtualSources.slice(0, limit);
 }

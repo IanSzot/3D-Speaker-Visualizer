@@ -4,7 +4,8 @@ import { OrbitControls } from '@react-three/drei';
 import { v4 as uuidv4 } from 'uuid';
 import * as THREE from 'three';
 
-import type { SpeakerGroupData, RoomData, SpeakerData } from './types';
+import type { SpeakerGroupData, RoomData, SpeakerData, SimulationQuality } from './types';
+import type { GlobalEnvironment } from './utils/presets';
 import { generateVirtualSources } from './utils/acoustics';
 import { Room3D } from './components/Room3D';
 import { Group3D } from './components/Group3D';
@@ -63,6 +64,8 @@ function App() {
   const [freqFilterEnabled, setFreqFilterEnabled] = useState(false);
   const [freqFilterTarget, setFreqFilterTarget] = useState(60);
   const [freqFilterBandwidth, setFreqFilterBandwidth] = useState(5);
+  
+  const [quality, setQuality] = useState<SimulationQuality>('medium');
 
   const virtualSources = useMemo(() => {
     const globalSpeakers: SpeakerData[] = [];
@@ -95,8 +98,8 @@ function App() {
       });
     });
 
-    return generateVirtualSources(globalSpeakers, room);
-  }, [speakerGroups, room, freqFilterEnabled, freqFilterTarget, freqFilterBandwidth]);
+    return generateVirtualSources(globalSpeakers, room, quality);
+  }, [speakerGroups, room, freqFilterEnabled, freqFilterTarget, freqFilterBandwidth, quality]);
 
   const updateGroup = (id: string, updates: Partial<SpeakerGroupData>) => {
     setSpeakerGroups(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
@@ -140,6 +143,12 @@ function App() {
   const removeGroup = (id: string) => {
     setSpeakerGroups(prev => prev.filter(g => g.id !== id));
     if (selectedGroupId === id) setSelectedGroupId(null);
+  };
+
+  const loadGlobalPreset = (env: GlobalEnvironment) => {
+    setRoom(env.room);
+    setSpeakerGroups(env.groups);
+    setSelectedGroupId(null);
   };
 
   return (
@@ -194,7 +203,7 @@ function App() {
           {visMode === 'volumetric' && (
             <VisualizationVolume 
               virtualSources={virtualSources} width={room.width} height={room.height} depth={room.depth}
-              steadyState={steadyState} speedOfSound={343.0} density={volumetricDensity}
+              steadyState={steadyState} speedOfSound={343.0} density={volumetricDensity} quality={quality}
             />
           )}
         </Canvas>
@@ -217,6 +226,7 @@ function App() {
         updateSpeakerInGroup={updateSpeakerInGroup}
         addGroup={addGroup}
         removeGroup={removeGroup}
+        loadGlobalPreset={loadGlobalPreset}
         steadyState={steadyState}
         setSteadyState={setSteadyState}
         visMode={visMode}
@@ -231,6 +241,8 @@ function App() {
         setFreqFilterTarget={setFreqFilterTarget}
         freqFilterBandwidth={freqFilterBandwidth}
         setFreqFilterBandwidth={setFreqFilterBandwidth}
+        quality={quality}
+        setQuality={setQuality}
       />
 
     </div>

@@ -28,6 +28,8 @@ export interface RoomData {
 }
 
 // For the shader, we need virtual sources representing the reflections
+export type SimulationQuality = 'low' | 'medium' | 'high';
+
 export interface VirtualSource {
   position: [number, number, number];
   direction: [number, number, number]; // Forward vector for directivity

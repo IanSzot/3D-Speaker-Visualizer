@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { SpeakerData, SpeakerGroupData } from '../types';
+import type { SpeakerData, SpeakerGroupData, RoomData } from '../types';
 
 export function generateLineArray(basePosition: [number, number, number], splayAngleDeg: number): SpeakerGroupData {
   const speakers: SpeakerData[] = [];
@@ -130,4 +130,59 @@ export function generateArcDelayArray(basePosition: [number, number, number]): S
     rotation: [0, 0, 0],
     speakers
   };
+}
+
+export interface GlobalEnvironment {
+  room: RoomData;
+  groups: SpeakerGroupData[];
+}
+
+export function generateFestival(): GlobalEnvironment {
+  const room: RoomData = { width: 40, height: 20, depth: 50, absorption: 0.8 };
+  // L and R Line Arrays (flown at 8m)
+  const leftArray = generateLineArray([-10, 8, -15], 2);
+  leftArray.name = "Left Line Array";
+  
+  const rightArray = generateLineArray([10, 8, -15], 2);
+  rightArray.name = "Right Line Array";
+  
+  // Arc Delay Subs on the ground
+  const subs = generateArcDelayArray([0, 0, -15]);
+  
+  return { room, groups: [leftArray, rightArray, subs] };
+}
+
+export function generateDiveBar(): GlobalEnvironment {
+  const room: RoomData = { width: 8, height: 3.5, depth: 12, absorption: 0.2 };
+  
+  const mainLeft: SpeakerGroupData = {
+    id: uuidv4(), name: 'Left Main', position: [-3, 2, -4], rotation: [0, Math.PI / 8, 0],
+    speakers: [{ id: uuidv4(), position: [0,0,0], rotation: [0,0,0], frequency: 1000, amplitude: 1.0, type: 'omni', phase: 0, delayMs: 0, invertPolarity: false }]
+  };
+  
+  const mainRight: SpeakerGroupData = {
+    id: uuidv4(), name: 'Right Main', position: [3, 2, -4], rotation: [0, -Math.PI / 8, 0],
+    speakers: [{ id: uuidv4(), position: [0,0,0], rotation: [0,0,0], frequency: 1000, amplitude: 1.0, type: 'omni', phase: 0, delayMs: 0, invertPolarity: false }]
+  };
+  
+  const cornerSub: SpeakerGroupData = {
+    id: uuidv4(), name: 'Corner Sub', position: [-3.5, 0.5, -5.5], rotation: [0, 0, 0],
+    speakers: [{ id: uuidv4(), position: [0,0,0], rotation: [0,0,0], frequency: 60, amplitude: 1.0, type: 'omni', phase: 0, delayMs: 0, invertPolarity: false }]
+  };
+  
+  return { room, groups: [mainLeft, mainRight, cornerSub] };
+}
+
+export function generateLecture(): GlobalEnvironment {
+  const room: RoomData = { width: 15, height: 4, depth: 10, absorption: 0.6 };
+  
+  const clusterLeft: SpeakerData = { id: uuidv4(), position: [-0.3, 0, 0], rotation: [0, Math.PI / 6, 0], frequency: 500, amplitude: 1.0, type: 'cardioid', phase: 0, delayMs: 0, invertPolarity: false };
+  const clusterRight: SpeakerData = { id: uuidv4(), position: [0.3, 0, 0], rotation: [0, -Math.PI / 6, 0], frequency: 500, amplitude: 1.0, type: 'cardioid', phase: 0, delayMs: 0, invertPolarity: false };
+  
+  const centerCluster: SpeakerGroupData = {
+    id: uuidv4(), name: 'Center Cluster', position: [0, 3.5, -4], rotation: [0, 0, 0],
+    speakers: [clusterLeft, clusterRight]
+  };
+  
+  return { room, groups: [centerCluster] };
 }

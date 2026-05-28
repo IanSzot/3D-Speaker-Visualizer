@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { extend } from '@react-three/fiber';
 
-export const MAX_SOURCES = 50;
+export const MAX_SOURCES = 150;
 
 const vertexShader = `
   varying vec3 vWorldPosition;
@@ -96,9 +96,7 @@ const fragmentShader = `
       // Scale magnitude for better visualization
       magnitude *= 1.5; 
     } else {
-      magnitude = realPart; // just show the moving wavefronts
-      // Map from [-val, val] to [0, 1]
-      magnitude = (magnitude * 1.5 + 1.0) * 0.5;
+      magnitude = abs(realPart) * 1.5;
     }
 
     vec3 color = heatmap(magnitude);

@@ -1,7 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { VirtualSource } from '../types';
+import type { VirtualSource, SimulationQuality } from '../types';
 import './VolumetricSoundMaterial'; 
 import { MAX_SOURCES } from './SoundWaveShaderMaterial';
 
@@ -13,6 +13,7 @@ interface VisualizationVolumeProps {
   steadyState: boolean;
   speedOfSound: number;
   density: number;
+  quality: SimulationQuality;
 }
 
 export const VisualizationVolume: React.FC<VisualizationVolumeProps> = ({
@@ -22,7 +23,8 @@ export const VisualizationVolume: React.FC<VisualizationVolumeProps> = ({
   height,
   steadyState,
   speedOfSound,
-  density
+  density,
+  quality
 }) => {
   const materialRef = useRef<any>(null);
 
@@ -64,6 +66,11 @@ export const VisualizationVolume: React.FC<VisualizationVolumeProps> = ({
       mat.uniforms.u_time.value = state.clock.elapsedTime;
       mat.uniforms.u_steadyState.value = steadyState;
       mat.uniforms.u_speedOfSound.value = speedOfSound;
+      
+      let raySteps = 30;
+      if (quality === 'low') raySteps = 20;
+      if (quality === 'high') raySteps = 50;
+      mat.uniforms.u_raySteps.value = raySteps;
       
       mat.uniforms.u_density.value = density;
       

@@ -25,6 +25,7 @@ const fragmentShader = `
   uniform float u_time;
   uniform float u_speedOfSound;
   uniform bool u_steadyState;
+  uniform int u_raySteps;
   
   uniform vec3 u_boxMin;
   uniform vec3 u_boxMax;
@@ -96,7 +97,8 @@ const fragmentShader = `
     if (u_steadyState) {
       return sqrt(realPart * realPart + imagPart * imagPart) * 1.5; 
     } else {
-      return (realPart * 1.5 + 1.0) * 0.5;
+      // Use absolute value so empty space returns 0.0 (transparent) and waves decay over distance
+      return abs(realPart) * 1.5;
     }
   }
 
@@ -114,14 +116,15 @@ const fragmentShader = `
     if (tNear > tFar) discard; // Missed the box
 
     // Raymarching loop
-    int maxSteps = 40;
+    int maxSteps = u_raySteps;
     float stepSize = (tFar - tNear) / float(maxSteps);
     
     vec3 colorAcc = vec3(0.0);
     float alphaAcc = 0.0;
 
     float t = tNear;
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 50; i++) {
+      if (i >= u_raySteps) break;
       vec3 p = rayOrigin + rayDir * t;
       float amp = getAmplitudeAt(p);
       
@@ -166,6 +169,7 @@ export class VolumetricSoundMaterial extends THREE.ShaderMaterial {
         u_time: { value: 0 },
         u_speedOfSound: { value: 343.0 },
         u_steadyState: { value: true },
+        u_raySteps: { value: 30 },
         u_boxMin: { value: new THREE.Vector3(-5, -2, -4) },
         u_boxMax: { value: new THREE.Vector3(5, 2, 4) },
         u_density: { value: 0.15 },
