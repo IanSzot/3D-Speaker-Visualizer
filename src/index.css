@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-heatmap-cold: #000000;
+  --color-heatmap-0: #0000aa;
+  --color-heatmap-1: #00aaff;
+  --color-heatmap-2: #00ffaa;
+  --color-heatmap-3: #aaff00;
+  --color-heatmap-4: #ffaa00;
+  --color-heatmap-hot: #ff0000;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a;
+  color: white;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
