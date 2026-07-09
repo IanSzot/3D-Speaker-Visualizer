@@ -5,6 +5,14 @@ import type { VirtualSource, SimulationQuality } from '../types';
 import './VolumetricSoundMaterial'; 
 import { MAX_SOURCES } from './SoundWaveShaderMaterial';
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      volumetricSoundMaterial: any;
+    }
+  }
+}
+
 interface VisualizationVolumeProps {
   virtualSources: VirtualSource[];
   width: number;

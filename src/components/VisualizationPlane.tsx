@@ -5,6 +5,14 @@ import type { VirtualSource } from '../types';
 import './SoundWaveShaderMaterial'; // Ensure it's imported to register the material
 import { MAX_SOURCES } from './SoundWaveShaderMaterial';
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      soundWaveMaterial: any;
+    }
+  }
+}
+
 interface VisualizationPlaneProps {
   virtualSources: VirtualSource[];
   width: number;

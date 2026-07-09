@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RoomData, SpeakerGroupData, SpeakerData, SimulationQuality } from '../types';
-import { Settings, Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity, ChevronDown, ChevronRight, Globe, AlertTriangle } from 'lucide-react';
+import { Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity, ChevronDown, ChevronRight, Globe, AlertTriangle } from 'lucide-react';
 import { generateLineArray, generateEndfireArray, generateArcDelayArray, generateFestival, generateDiveBar, generateLecture } from '../utils/presets';
 import type { GlobalEnvironment } from '../utils/presets';
 
@@ -310,7 +310,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
           </div>
 
           <div className="space-y-3">
-            {speakerGroups.map((group, index) => {
+            {speakerGroups.map((group) => {
               const isCollapsed = collapsedGroups.has(group.id);
               return (
               <div 

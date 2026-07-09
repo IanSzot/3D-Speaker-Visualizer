@@ -14,8 +14,7 @@ interface Group3DProps {
 export const Group3D: React.FC<Group3DProps> = ({ group, updateGroup, selected, onSelect }) => {
   const groupRef = useRef<any>(null);
   const transformRef = useRef<any>(null);
-  const [mode, setMode] = useState<'translate' | 'rotate'>('translate');
-  const { gl } = useThree();
+  const [mode] = useState<'translate' | 'rotate'>('translate');
 
   return (
     <>
