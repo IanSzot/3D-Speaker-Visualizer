@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { TransformControls } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
+// import { useThree } from '@react-three/fiber';
 import type { SpeakerGroupData } from '../types';
 import { Speaker3D } from './Speaker3D';
 
