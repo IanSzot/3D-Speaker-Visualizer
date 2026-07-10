@@ -12,6 +12,7 @@ export interface AppState {
   freqFilterTarget: number;
   freqFilterBandwidth: number;
   quality: SimulationQuality;
+  roomReflections: boolean;
 }
 
 export function encodeStateToURL(state: AppState): void {

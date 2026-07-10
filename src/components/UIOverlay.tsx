@@ -35,10 +35,12 @@ interface UIOverlayProps {
   quality: SimulationQuality;
   setQuality: (q: SimulationQuality) => void;
   shareState: () => void;
+  roomReflections: boolean;
+  setRoomReflections: (v: boolean) => void;
 }
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
-  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, loadGlobalPreset, obstacles, addObstacle, updateObstacle, removeObstacle, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth, quality, setQuality, shareState
+  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, loadGlobalPreset, obstacles, addObstacle, updateObstacle, removeObstacle, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth, quality, setQuality, shareState, roomReflections, setRoomReflections
 }) => {
   const [splayAngle, setSplayAngle] = React.useState(2);
   const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set());
@@ -202,9 +204,20 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
         {/* Room Controls */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-slate-300 border-b border-slate-700 pb-2">
-            <Box className="w-4 h-4" />
-            <h2 className="font-semibold text-sm">Room Dimensions</h2>
+          <div className="flex items-center justify-between text-slate-300 border-b border-slate-700 pb-2">
+            <div className="flex items-center gap-2">
+              <Box className="w-4 h-4" />
+              <h2 className="font-semibold text-sm">Room Dimensions</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-400">Wall Reflections</span>
+              <input 
+                type="checkbox" 
+                checked={roomReflections}
+                onChange={e => setRoomReflections(e.target.checked)}
+                className="accent-blue-500 rounded border-slate-600 bg-slate-700 w-3 h-3"
+              />
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">

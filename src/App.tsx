@@ -70,6 +70,7 @@ function App() {
   const [freqFilterBandwidth, setFreqFilterBandwidth] = useState(5);
   
   const [quality, setQuality] = useState<SimulationQuality>('medium');
+  const [roomReflections, setRoomReflections] = useState(true);
 
   useEffect(() => {
     const savedState = decodeStateFromURL();
@@ -85,13 +86,14 @@ function App() {
       setFreqFilterTarget(savedState.freqFilterTarget);
       setFreqFilterBandwidth(savedState.freqFilterBandwidth);
       setQuality(savedState.quality || 'medium');
+      if (savedState.roomReflections !== undefined) setRoomReflections(savedState.roomReflections);
     }
   }, []);
 
   const handleShareState = () => {
     encodeStateToURL({
       room, speakerGroups, obstacles, steadyState, visMode, volumetricDensity, planeY,
-      freqFilterEnabled, freqFilterTarget, freqFilterBandwidth, quality
+      freqFilterEnabled, freqFilterTarget, freqFilterBandwidth, quality, roomReflections
     });
     navigator.clipboard.writeText(window.location.href);
   };
@@ -127,8 +129,8 @@ function App() {
       });
     });
 
-    return generateVirtualSources(globalSpeakers, room, quality);
-  }, [speakerGroups, room, freqFilterEnabled, freqFilterTarget, freqFilterBandwidth, quality]);
+    return generateVirtualSources(globalSpeakers, room, quality, obstacles, roomReflections);
+  }, [speakerGroups, room, freqFilterEnabled, freqFilterTarget, freqFilterBandwidth, quality, obstacles, roomReflections]);
 
   const updateGroup = (id: string, updates: Partial<SpeakerGroupData>) => {
     setSpeakerGroups(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
@@ -308,6 +310,8 @@ function App() {
         quality={quality}
         setQuality={setQuality}
         shareState={handleShareState}
+        roomReflections={roomReflections}
+        setRoomReflections={setRoomReflections}
       />
 
     </div>
