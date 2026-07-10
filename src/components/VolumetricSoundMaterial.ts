@@ -31,21 +31,69 @@ const fragmentShader = `
   uniform vec3 u_boxMax;
   uniform float u_density;
 
-  // Obstacle uniforms
   uniform int u_numObstacles;
   uniform vec3 u_obstaclePositions[${MAX_OBSTACLES}];
   uniform vec3 u_obstacleRotations[${MAX_OBSTACLES}];
   uniform vec3 u_obstacleSizes[${MAX_OBSTACLES}];
-  uniform int u_obstacleShapes[${MAX_OBSTACLES}]; // 0 = box, 1 = cylinder
+  uniform int u_obstacleShapes[${MAX_OBSTACLES}];
 
   varying vec3 vWorldPosition;
   varying vec3 vLocalPosition;
 
-  // Rotate a point around Y axis
   vec3 rotateY(vec3 p, float angle) {
     float c = cos(angle);
     float s = sin(angle);
     return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
+  }
+
+  bool isPathBlocked(vec3 from, vec3 to) {
+    vec3 seg = to - from;
+    float segLen = length(seg);
+    if (segLen < 0.001) return false;
+    vec3 dir = seg / segLen;
+
+    for (int i = 0; i < ${MAX_OBSTACLES}; i++) {
+      if (i >= u_numObstacles) break;
+
+      float angle = -u_obstacleRotations[i].y;
+      vec3 localFrom = rotateY(from - u_obstaclePositions[i], angle);
+      vec3 localDir = rotateY(dir, angle);
+      vec3 halfSize = u_obstacleSizes[i] * 0.5;
+
+      if (u_obstacleShapes[i] == 0) {
+        vec3 invDir = 1.0 / localDir;
+        vec3 t1 = (-halfSize - localFrom) * invDir;
+        vec3 t2 = ( halfSize - localFrom) * invDir;
+        vec3 tmin = min(t1, t2);
+        vec3 tmax = max(t1, t2);
+        float tNear = max(max(tmin.x, tmin.y), tmin.z);
+        float tFar  = min(min(tmax.x, tmax.y), tmax.z);
+        if (tNear < tFar && tFar > 0.05 && tNear < segLen - 0.05) {
+          return true;
+        }
+      } else {
+        float r = halfSize.x;
+        float a = localDir.x * localDir.x + localDir.z * localDir.z;
+        float b = 2.0 * (localFrom.x * localDir.x + localFrom.z * localDir.z);
+        float c = localFrom.x * localFrom.x + localFrom.z * localFrom.z - r * r;
+        float disc = b * b - 4.0 * a * c;
+        if (disc >= 0.0 && a > 0.0001) {
+          float sqrtDisc = sqrt(disc);
+          float t0 = (-b - sqrtDisc) / (2.0 * a);
+          float t1 = (-b + sqrtDisc) / (2.0 * a);
+          for (int j = 0; j < 2; j++) {
+            float t = (j == 0) ? t0 : t1;
+            if (t > 0.05 && t < segLen - 0.05) {
+              float y = localFrom.y + localDir.y * t;
+              if (abs(y) < halfSize.y) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
   }
 
   bool isInsideObstacle(vec3 pos) {
@@ -54,22 +102,16 @@ const fragmentShader = `
       vec3 local = pos - u_obstaclePositions[i];
       local = rotateY(local, -u_obstacleRotations[i].y);
       vec3 halfSize = u_obstacleSizes[i] * 0.5;
-
       if (u_obstacleShapes[i] == 0) {
-        if (abs(local.x) < halfSize.x && abs(local.y) < halfSize.y && abs(local.z) < halfSize.z) {
-          return true;
-        }
+        if (abs(local.x) < halfSize.x && abs(local.y) < halfSize.y && abs(local.z) < halfSize.z) return true;
       } else {
         float r = halfSize.x;
-        if (local.x * local.x + local.z * local.z < r * r && abs(local.y) < halfSize.y) {
-          return true;
-        }
+        if (local.x * local.x + local.z * local.z < r * r && abs(local.y) < halfSize.y) return true;
       }
     }
     return false;
   }
 
-  // Scientific heatmap
   vec3 heatmap(float v) {
       v = clamp(v, 0.0, 1.0);
       vec3 c0 = vec3(0.0, 0.0, 0.5); 
@@ -77,14 +119,12 @@ const fragmentShader = `
       vec3 c2 = vec3(0.0, 1.0, 0.5); 
       vec3 c3 = vec3(1.0, 1.0, 0.0); 
       vec3 c4 = vec3(1.0, 0.0, 0.0); 
-
       if(v < 0.25) return mix(c0, c1, v * 4.0);
       if(v < 0.50) return mix(c1, c2, (v - 0.25) * 4.0);
       if(v < 0.75) return mix(c2, c3, (v - 0.50) * 4.0);
       return mix(c3, c4, (v - 0.75) * 4.0);
   }
 
-  // Calculate bounding box intersection to find exit point
   vec2 intersectBox(vec3 rayOrigin, vec3 rayDir, vec3 boxMin, vec3 boxMax) {
       vec3 tMin = (boxMin - rayOrigin) / rayDir;
       vec3 tMax = (boxMax - rayOrigin) / rayDir;
@@ -96,7 +136,6 @@ const fragmentShader = `
   }
 
   float getAmplitudeAt(vec3 pos) {
-    // If inside an obstacle, return 0 (acoustic shadow)
     if (isInsideObstacle(pos)) return 0.0;
 
     float realPart = 0.0;
@@ -106,6 +145,10 @@ const fragmentShader = `
       if (i >= u_numSources) break;
 
       vec3 sPos = u_sourcePositions[i];
+
+      // Check line-of-sight: skip this source if blocked
+      if (u_numObstacles > 0 && isPathBlocked(sPos, pos)) continue;
+
       float dist = distance(pos, sPos);
       dist = max(dist, 0.05);
 
@@ -143,16 +186,12 @@ const fragmentShader = `
     vec3 rayDir = normalize(vWorldPosition - cameraPosition);
     vec3 rayOrigin = cameraPosition;
     
-    // Check intersection with the room box
     vec2 tBox = intersectBox(rayOrigin, rayDir, u_boxMin, u_boxMax);
-    
-    // If the camera is inside the box, start from t=0
     float tNear = max(tBox.x, 0.0);
     float tFar = tBox.y;
 
-    if (tNear > tFar) discard; // Missed the box
+    if (tNear > tFar) discard;
 
-    // Raymarching loop
     float stepSize = (tFar - tNear) / float(u_raySteps);
     
     vec3 colorAcc = vec3(0.0);
@@ -164,17 +203,15 @@ const fragmentShader = `
       vec3 p = rayOrigin + rayDir * t;
       float amp = getAmplitudeAt(p);
       
-      // Nodes (amp ~ 0) should be transparent. Antinodes (amp high) more opaque.
       float opacity = smoothstep(0.1, 0.8, amp) * u_density;
       
       if (opacity > 0.01) {
         vec3 color = heatmap(amp);
-        // Pre-multiplied alpha accumulation
         colorAcc += color * opacity * (1.0 - alphaAcc);
         alphaAcc += opacity * (1.0 - alphaAcc);
       }
       
-      if (alphaAcc >= 0.95) break; // Early exit if opaque
+      if (alphaAcc >= 0.95) break;
       t += stepSize;
     }
 
@@ -207,7 +244,6 @@ export class VolumetricSoundMaterial extends THREE.ShaderMaterial {
         u_boxMin: { value: new THREE.Vector3(-5, -2, -4) },
         u_boxMax: { value: new THREE.Vector3(5, 2, 4) },
         u_density: { value: 0.15 },
-        // Obstacles
         u_numObstacles: { value: 0 },
         u_obstaclePositions: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()) },
         u_obstacleRotations: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()) },
