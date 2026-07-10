@@ -1,4 +1,5 @@
 import type { RoomData, SpeakerGroupData, SimulationQuality, ObstacleData } from '../types';
+import LZString from 'lz-string';
 
 export interface AppState {
   room: RoomData;
@@ -18,9 +19,8 @@ export interface AppState {
 export function encodeStateToURL(state: AppState): void {
   try {
     const jsonString = JSON.stringify(state);
-    // encodeURIComponent handles UTF-8 properly so btoa doesn't crash on extended chars
-    const base64 = btoa(encodeURIComponent(jsonString));
-    window.history.replaceState(null, '', `#state=${base64}`);
+    const compressed = LZString.compressToEncodedURIComponent(jsonString);
+    window.history.replaceState(null, '', `#state=${compressed}`);
   } catch (error) {
     console.error('Failed to encode state to URL:', error);
   }
@@ -33,8 +33,11 @@ export function decodeStateFromURL(): AppState | null {
       return null;
     }
     
-    const base64 = hash.replace('#state=', '');
-    const jsonString = decodeURIComponent(atob(base64));
+    const compressed = hash.replace('#state=', '');
+    const jsonString = LZString.decompressFromEncodedURIComponent(compressed);
+    
+    if (!jsonString) return null;
+    
     const state = JSON.parse(jsonString) as AppState;
     
     // Clear the hash after loading so it doesn't linger forever if they change things
