@@ -26,10 +26,10 @@ export function generateVirtualSources(speakers: SpeakerData[], room: RoomData, 
     const direction = new THREE.Vector3(0, 0, -1).applyEuler(euler);
 
     // Helper to add a source
-    const addSource = (pos: [number, number, number], ampMult: number) => {
+    const addSource = (pos: [number, number, number], dir: [number, number, number], ampMult: number) => {
       virtualSources.push({
         position: pos,
-        direction: [direction.x, direction.y, direction.z],
+        direction: dir,
         frequency,
         amplitude: amplitude * ampMult,
         phase: effectivePhase,
@@ -38,7 +38,7 @@ export function generateVirtualSources(speakers: SpeakerData[], room: RoomData, 
     };
 
     // 0: Original source
-    addSource([...position], 1.0);
+    addSource([...position], [direction.x, direction.y, direction.z], 1.0);
 
     // If quality is low, don't generate any reflections
     if (quality === 'low') return;
@@ -46,17 +46,17 @@ export function generateVirtualSources(speakers: SpeakerData[], room: RoomData, 
     // 1st order reflections
     const reflAmp = 1.0 - room.absorption;
     
-    // x walls (Left/Right)
-    addSource([ hW + (hW - position[0]), position[1], position[2] ], reflAmp);
-    addSource([ -hW - (hW + position[0]), position[1], position[2] ], reflAmp);
+    // x walls (Left/Right) - Mirror X position and X direction
+    addSource([ hW + (hW - position[0]), position[1], position[2] ], [-direction.x, direction.y, direction.z], reflAmp);
+    addSource([ -hW - (hW + position[0]), position[1], position[2] ], [-direction.x, direction.y, direction.z], reflAmp);
     
-    // y walls (Floor/Ceiling)
-    addSource([ position[0], hH + (hH - position[1]), position[2] ], reflAmp);
-    addSource([ position[0], -hH - (hH + position[1]), position[2] ], reflAmp);
+    // y walls (Floor/Ceiling) - Mirror Y position and Y direction
+    addSource([ position[0], hH + (hH - position[1]), position[2] ], [direction.x, -direction.y, direction.z], reflAmp);
+    addSource([ position[0], -hH - (hH + position[1]), position[2] ], [direction.x, -direction.y, direction.z], reflAmp);
     
-    // z walls (Front/Back)
-    addSource([ position[0], position[1], hD + (hD - position[2]) ], reflAmp);
-    addSource([ position[0], position[1], -hD - (hD + position[2]) ], reflAmp);
+    // z walls (Front/Back) - Mirror Z position and Z direction
+    addSource([ position[0], position[1], hD + (hD - position[2]) ], [direction.x, direction.y, -direction.z], reflAmp);
+    addSource([ position[0], position[1], -hD - (hD + position[2]) ], [direction.x, direction.y, -direction.z], reflAmp);
   });
 
   // Sort by highest amplitude first to prioritize the most important sources if we hit the limit

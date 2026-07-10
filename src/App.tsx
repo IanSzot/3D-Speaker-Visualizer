@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import type { SpeakerGroupData, RoomData, SpeakerData, SimulationQuality, ObstacleData, ObstacleShape } from './types';
 import type { GlobalEnvironment } from './utils/presets';
 import { generateVirtualSources } from './utils/acoustics';
+import { decodeStateFromURL, encodeStateToURL } from './utils/stateManager';
 import { Room3D } from './components/Room3D';
 import { Group3D } from './components/Group3D';
 import { Obstacle3D } from './components/Obstacle3D';
@@ -69,6 +70,31 @@ function App() {
   const [freqFilterBandwidth, setFreqFilterBandwidth] = useState(5);
   
   const [quality, setQuality] = useState<SimulationQuality>('medium');
+
+  useEffect(() => {
+    const savedState = decodeStateFromURL();
+    if (savedState) {
+      setRoom(savedState.room);
+      setSpeakerGroups(savedState.speakerGroups);
+      setObstacles(savedState.obstacles || []);
+      setSteadyState(savedState.steadyState);
+      setVisMode(savedState.visMode);
+      setVolumetricDensity(savedState.volumetricDensity);
+      setPlaneY(savedState.planeY);
+      setFreqFilterEnabled(savedState.freqFilterEnabled);
+      setFreqFilterTarget(savedState.freqFilterTarget);
+      setFreqFilterBandwidth(savedState.freqFilterBandwidth);
+      setQuality(savedState.quality || 'medium');
+    }
+  }, []);
+
+  const handleShareState = () => {
+    encodeStateToURL({
+      room, speakerGroups, obstacles, steadyState, visMode, volumetricDensity, planeY,
+      freqFilterEnabled, freqFilterTarget, freqFilterBandwidth, quality
+    });
+    navigator.clipboard.writeText(window.location.href);
+  };
 
   const virtualSources = useMemo(() => {
     const globalSpeakers: SpeakerData[] = [];
@@ -281,6 +307,7 @@ function App() {
         setFreqFilterBandwidth={setFreqFilterBandwidth}
         quality={quality}
         setQuality={setQuality}
+        shareState={handleShareState}
       />
 
     </div>

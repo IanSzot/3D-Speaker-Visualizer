@@ -119,10 +119,12 @@ const fragmentShader = `
       vec3 c2 = vec3(0.0, 1.0, 0.5); 
       vec3 c3 = vec3(1.0, 1.0, 0.0); 
       vec3 c4 = vec3(1.0, 0.0, 0.0); 
-      if(v < 0.25) return mix(c0, c1, v * 4.0);
-      if(v < 0.50) return mix(c1, c2, (v - 0.25) * 4.0);
-      if(v < 0.75) return mix(c2, c3, (v - 0.50) * 4.0);
-      return mix(c3, c4, (v - 0.75) * 4.0);
+      
+      vec3 color = mix(c0, c1, smoothstep(0.0, 0.25, v));
+      color = mix(color, c2, smoothstep(0.25, 0.50, v));
+      color = mix(color, c3, smoothstep(0.50, 0.75, v));
+      color = mix(color, c4, smoothstep(0.75, 1.0, v));
+      return color;
   }
 
   vec2 intersectBox(vec3 rayOrigin, vec3 rayDir, vec3 boxMin, vec3 boxMax) {
@@ -211,7 +213,7 @@ const fragmentShader = `
         alphaAcc += opacity * (1.0 - alphaAcc);
       }
       
-      if (alphaAcc >= 0.95) break;
+      if (alphaAcc >= 0.90) break;
       t += stepSize;
     }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RoomData, SpeakerGroupData, SpeakerData, SimulationQuality, ObstacleData, ObstacleShape } from '../types';
-import { Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity, ChevronDown, ChevronRight, Globe, AlertTriangle, Cylinder } from 'lucide-react';
+import { Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity, ChevronDown, ChevronRight, Globe, AlertTriangle, Cylinder, Share2, Check } from 'lucide-react';
 import { generateLineArray, generateEndfireArray, generateArcDelayArray, generateFestival, generateDiveBar, generateLecture } from '../utils/presets';
 import type { GlobalEnvironment } from '../utils/presets';
 
@@ -34,13 +34,21 @@ interface UIOverlayProps {
   setFreqFilterBandwidth: (v: number) => void;
   quality: SimulationQuality;
   setQuality: (q: SimulationQuality) => void;
+  shareState: () => void;
 }
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
-  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, loadGlobalPreset, obstacles, addObstacle, updateObstacle, removeObstacle, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth, quality, setQuality
+  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, loadGlobalPreset, obstacles, addObstacle, updateObstacle, removeObstacle, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth, quality, setQuality, shareState
 }) => {
   const [splayAngle, setSplayAngle] = React.useState(2);
   const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set());
+  const [copied, setCopied] = React.useState(false);
+
+  const handleShare = () => {
+    shareState();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const toggleGroupCollapse = (id: string) => {
     setCollapsedGroups(prev => {
@@ -53,9 +61,25 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
   return (
     <div className="w-80 bg-slate-800/90 backdrop-blur border-l border-slate-700 h-full overflow-y-auto flex flex-col p-6 shadow-2xl">
-      <div className="flex items-center gap-2 mb-8 text-blue-400">
-        <Waves className="w-6 h-6" />
-        <h1 className="text-xl font-bold tracking-tight">Acoustics 3D</h1>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-2 text-blue-400">
+          <Waves className="w-6 h-6" />
+          <h1 className="text-xl font-bold tracking-tight">Acoustics 3D</h1>
+        </div>
+        <button 
+          onClick={handleShare}
+          className="bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors p-2 rounded-full flex items-center justify-center relative group"
+          title="Copy shareable link"
+        >
+          {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+          
+          {/* Tooltip */}
+          {copied && (
+            <div className="absolute top-full mt-2 right-0 bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-1 rounded border border-emerald-500/30 whitespace-nowrap">
+              Link copied!
+            </div>
+          )}
+        </button>
       </div>
 
       <div className="space-y-8 flex-1">
