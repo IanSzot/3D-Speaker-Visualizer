@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { extend } from '@react-three/fiber';
 
-export const MAX_SOURCES = 150;
+export const MAX_SOURCES = 70;
+export const MAX_OBSTACLES = 8;
 
 const vertexShader = `
   varying vec3 vWorldPosition;
@@ -25,13 +26,48 @@ const fragmentShader = `
   uniform float u_speedOfSound;
   uniform bool u_steadyState;
 
+  // Obstacle uniforms
+  uniform int u_numObstacles;
+  uniform vec3 u_obstaclePositions[${MAX_OBSTACLES}];
+  uniform vec3 u_obstacleRotations[${MAX_OBSTACLES}];
+  uniform vec3 u_obstacleSizes[${MAX_OBSTACLES}];
+  uniform int u_obstacleShapes[${MAX_OBSTACLES}]; // 0 = box, 1 = cylinder
+
   varying vec3 vWorldPosition;
+
+  // Rotate a point around Y axis
+  vec3 rotateY(vec3 p, float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
+  }
+
+  bool isInsideObstacle(vec3 pos) {
+    for (int i = 0; i < ${MAX_OBSTACLES}; i++) {
+      if (i >= u_numObstacles) break;
+      // Transform point into obstacle local space
+      vec3 local = pos - u_obstaclePositions[i];
+      local = rotateY(local, -u_obstacleRotations[i].y);
+      vec3 halfSize = u_obstacleSizes[i] * 0.5;
+
+      if (u_obstacleShapes[i] == 0) {
+        // Box
+        if (abs(local.x) < halfSize.x && abs(local.y) < halfSize.y && abs(local.z) < halfSize.z) {
+          return true;
+        }
+      } else {
+        // Cylinder: halfSize.x = radius, halfSize.y = half height
+        float r = halfSize.x;
+        if (local.x * local.x + local.z * local.z < r * r && abs(local.y) < halfSize.y) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   // colormap
   vec3 heatmap(float v) {
-      // Map v (amplitude) to a color
-      // Scientific heatmap: blue (node) -> cyan -> green -> yellow -> red (antinode)
-      // v goes from 0.0 to 1.0 typically, but can be larger.
       v = clamp(v, 0.0, 1.0);
       
       vec3 c0 = vec3(0.0, 0.0, 0.5); // dark blue
@@ -47,6 +83,12 @@ const fragmentShader = `
   }
 
   void main() {
+    // Check if this point is inside an obstacle
+    if (isInsideObstacle(vWorldPosition)) {
+      gl_FragColor = vec4(0.15, 0.15, 0.2, 0.9);
+      return;
+    }
+
     float realPart = 0.0;
     float imagPart = 0.0;
 
@@ -55,35 +97,26 @@ const fragmentShader = `
 
       vec3 pos = u_sourcePositions[i];
       float dist = distance(vWorldPosition, pos);
-      
-      // Avoid division by zero very close to the source
       dist = max(dist, 0.05);
 
-      float k = (2.0 * 3.14159265359 * u_frequencies[i]) / u_speedOfSound;
+      float k = (6.28318530718 * u_frequencies[i]) / u_speedOfSound;
       
       // Directivity
       vec3 toPoint = normalize(vWorldPosition - pos);
       vec3 dir = u_sourceDirections[i];
       float cosTheta = dot(toPoint, dir);
       
-      // Directivity factor: a + (1-a)*cosTheta. If a=1, it's 1 (omni). If a=0.5, it's cardioid.
       float directivity = u_directivity[i] + (1.0 - u_directivity[i]) * cosTheta;
-      directivity = max(directivity, 0.0); // no negative emission backwards for cardioid
+      directivity = max(directivity, 0.0);
 
       float A = (u_amplitudes[i] * directivity) / dist;
-      
       float phase = u_phases[i];
-      
-      // We want to sum the complex pressures
-      // P = A * e^( j * (wt - k*r + phase) )
-      // We can drop wt for steady-state magnitude.
-      // If we want moving waves, we include wt.
 
       float arg = -k * dist + phase;
       
       if (!u_steadyState) {
-        float w = 2.0 * 3.14159265359 * u_frequencies[i];
-        arg += w * u_time * 0.01; // slow down time a bit for visualization
+        float w = 6.28318530718 * u_frequencies[i];
+        arg += w * u_time * 0.01;
       }
 
       realPart += A * cos(arg);
@@ -92,9 +125,7 @@ const fragmentShader = `
 
     float magnitude;
     if (u_steadyState) {
-      magnitude = sqrt(realPart * realPart + imagPart * imagPart);
-      // Scale magnitude for better visualization
-      magnitude *= 1.5; 
+      magnitude = sqrt(realPart * realPart + imagPart * imagPart) * 1.5; 
     } else {
       magnitude = abs(realPart) * 1.5;
     }
@@ -104,10 +135,10 @@ const fragmentShader = `
     // Add grid lines for reference (1m grid)
     vec2 grid = fract(vWorldPosition.xz);
     if (grid.x < 0.02 || grid.y < 0.02) {
-      color += vec3(0.1); // subtle grid
+      color += vec3(0.1);
     }
 
-    gl_FragColor = vec4(color, 0.85); // slight transparency
+    gl_FragColor = vec4(color, 0.85);
   }
 `;
 
@@ -129,6 +160,12 @@ export class SoundWaveMaterial extends THREE.ShaderMaterial {
         u_time: { value: 0 },
         u_speedOfSound: { value: 343.0 },
         u_steadyState: { value: true },
+        // Obstacles
+        u_numObstacles: { value: 0 },
+        u_obstaclePositions: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()) },
+        u_obstacleRotations: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()) },
+        u_obstacleSizes: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3(1,1,1)) },
+        u_obstacleShapes: { value: new Array(MAX_OBSTACLES).fill(0) },
       },
     });
   }

@@ -62,7 +62,7 @@ export function generateVirtualSources(speakers: SpeakerData[], room: RoomData, 
   // Sort by highest amplitude first to prioritize the most important sources if we hit the limit
   virtualSources.sort((a, b) => b.amplitude - a.amplitude);
 
-  // Return only up to MAX_SOURCES (or fewer if medium/low) to prevent shader uniform overflow
-  const limit = quality === 'high' ? MAX_SOURCES : 50;
+  // Return only up to the quality-appropriate limit to prevent shader uniform overflow
+  const limit = quality === 'high' ? MAX_SOURCES : quality === 'medium' ? 50 : 30;
   return virtualSources.slice(0, limit);
 }

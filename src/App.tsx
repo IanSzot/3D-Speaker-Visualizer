@@ -4,11 +4,12 @@ import { OrbitControls } from '@react-three/drei';
 import { v4 as uuidv4 } from 'uuid';
 import * as THREE from 'three';
 
-import type { SpeakerGroupData, RoomData, SpeakerData, SimulationQuality } from './types';
+import type { SpeakerGroupData, RoomData, SpeakerData, SimulationQuality, ObstacleData, ObstacleShape } from './types';
 import type { GlobalEnvironment } from './utils/presets';
 import { generateVirtualSources } from './utils/acoustics';
 import { Room3D } from './components/Room3D';
 import { Group3D } from './components/Group3D';
+import { Obstacle3D } from './components/Obstacle3D';
 import { VisualizationPlane } from './components/VisualizationPlane';
 import { VisualizationVolume } from './components/VisualizationVolume';
 import { UIOverlay } from './components/UIOverlay';
@@ -54,7 +55,9 @@ function App() {
     }
   ]);
   
+  const [obstacles, setObstacles] = useState<ObstacleData[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedObstacleId, setSelectedObstacleId] = useState<string | null>(null);
   const [steadyState, setSteadyState] = useState(true);
   const [visMode, setVisMode] = useState<'single-plane' | '3-planes' | 'volumetric'>('volumetric');
   const [volumetricDensity, setVolumetricDensity] = useState(0.15);
@@ -151,6 +154,27 @@ function App() {
     setSelectedGroupId(null);
   };
 
+  // Obstacle CRUD
+  const addObstacle = (shape: ObstacleShape) => {
+    const defaultSize: [number, number, number] = shape === 'box' ? [2, 2, 2] : [1, 2, 1];
+    setObstacles(prev => [...prev, {
+      id: uuidv4(),
+      shape,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      size: defaultSize
+    }]);
+  };
+
+  const updateObstacle = (id: string, updates: Partial<ObstacleData>) => {
+    setObstacles(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
+  };
+
+  const removeObstacle = (id: string) => {
+    setObstacles(prev => prev.filter(o => o.id !== id));
+    if (selectedObstacleId === id) setSelectedObstacleId(null);
+  };
+
   return (
     <div className="w-full h-screen bg-slate-900 flex text-slate-200 font-sans overflow-hidden">
       
@@ -171,13 +195,23 @@ function App() {
               group={group} 
               updateGroup={updateGroup}
               selected={selectedGroupId === group.id}
-              onSelect={() => setSelectedGroupId(group.id)}
+              onSelect={() => { setSelectedGroupId(group.id); setSelectedObstacleId(null); }}
+            />
+          ))}
+
+          {obstacles.map(obs => (
+            <Obstacle3D
+              key={obs.id}
+              obstacle={obs}
+              updateObstacle={updateObstacle}
+              selected={selectedObstacleId === obs.id}
+              onSelect={() => { setSelectedObstacleId(obs.id); setSelectedGroupId(null); }}
             />
           ))}
           
           {visMode === 'single-plane' && (
             <VisualizationPlane 
-              virtualSources={virtualSources} width={room.width} depth={room.depth}
+              virtualSources={virtualSources} obstacles={obstacles} width={room.width} depth={room.depth}
               position={[0, planeY, 0]} rotation={[-Math.PI / 2, 0, 0]}
               steadyState={steadyState} speedOfSound={343.0}
             />
@@ -186,15 +220,15 @@ function App() {
           {visMode === '3-planes' && (
             <group>
               <VisualizationPlane 
-                virtualSources={virtualSources} width={room.width} depth={room.depth}
+                virtualSources={virtualSources} obstacles={obstacles} width={room.width} depth={room.depth}
                 position={[0, planeY, 0]} rotation={[-Math.PI / 2, 0, 0]} steadyState={steadyState} speedOfSound={343.0}
               />
               <VisualizationPlane 
-                virtualSources={virtualSources} width={room.width} depth={room.height}
+                virtualSources={virtualSources} obstacles={obstacles} width={room.width} depth={room.height}
                 position={[0, 0, 0]} rotation={[0, 0, 0]} steadyState={steadyState} speedOfSound={343.0}
               />
               <VisualizationPlane 
-                virtualSources={virtualSources} width={room.depth} depth={room.height}
+                virtualSources={virtualSources} obstacles={obstacles} width={room.depth} depth={room.height}
                 position={[0, 0, 0]} rotation={[0, Math.PI / 2, 0]} steadyState={steadyState} speedOfSound={343.0}
               />
             </group>
@@ -202,7 +236,7 @@ function App() {
 
           {visMode === 'volumetric' && (
             <VisualizationVolume 
-              virtualSources={virtualSources} width={room.width} height={room.height} depth={room.depth}
+              virtualSources={virtualSources} obstacles={obstacles} width={room.width} height={room.height} depth={room.depth}
               steadyState={steadyState} speedOfSound={343.0} density={volumetricDensity} quality={quality}
             />
           )}
@@ -212,7 +246,7 @@ function App() {
         <div className="absolute top-4 left-4 pointer-events-none text-slate-400 text-sm">
           <p>Left Click + Drag to rotate camera</p>
           <p>Right Click + Drag to pan camera</p>
-          <p>Click on a speaker group to move it</p>
+          <p>Click on a speaker group or object to move it</p>
         </div>
       </div>
 
@@ -227,6 +261,10 @@ function App() {
         addGroup={addGroup}
         removeGroup={removeGroup}
         loadGlobalPreset={loadGlobalPreset}
+        obstacles={obstacles}
+        addObstacle={addObstacle}
+        updateObstacle={updateObstacle}
+        removeObstacle={removeObstacle}
         steadyState={steadyState}
         setSteadyState={setSteadyState}
         visMode={visMode}

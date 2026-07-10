@@ -1,5 +1,7 @@
 # 3D Soundwave Visualizer
 
+[![Live Demo](https://img.shields.io/badge/🔊_Live_Demo-3D_Speaker_Visualizer-blue?style=for-the-badge)](https://3d-speaker-visualizer.vercel.app/)
+
 A real-time, GPU-accelerated acoustic simulation and visualization tool built with React, Three.js, and custom WebGL shaders. 
 
 This project simulates complex acoustic interference patterns, allowing audio engineers and enthusiasts to physically model how sound waves propagate, reflect, and interact within a 3D room.

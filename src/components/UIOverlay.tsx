@@ -1,6 +1,6 @@
 import React from 'react';
-import type { RoomData, SpeakerGroupData, SpeakerData, SimulationQuality } from '../types';
-import { Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity, ChevronDown, ChevronRight, Globe, AlertTriangle } from 'lucide-react';
+import type { RoomData, SpeakerGroupData, SpeakerData, SimulationQuality, ObstacleData, ObstacleShape } from '../types';
+import { Volume2, Plus, Trash2, Box, Waves, SlidersHorizontal, Activity, ChevronDown, ChevronRight, Globe, AlertTriangle, Cylinder } from 'lucide-react';
 import { generateLineArray, generateEndfireArray, generateArcDelayArray, generateFestival, generateDiveBar, generateLecture } from '../utils/presets';
 import type { GlobalEnvironment } from '../utils/presets';
 
@@ -14,6 +14,10 @@ interface UIOverlayProps {
   addGroup: (group?: SpeakerGroupData) => void;
   removeGroup: (id: string) => void;
   loadGlobalPreset: (env: GlobalEnvironment) => void;
+  obstacles: ObstacleData[];
+  addObstacle: (shape: ObstacleShape) => void;
+  updateObstacle: (id: string, updates: Partial<ObstacleData>) => void;
+  removeObstacle: (id: string) => void;
   steadyState: boolean;
   setSteadyState: (v: boolean) => void;
   visMode: 'single-plane' | '3-planes' | 'volumetric';
@@ -33,7 +37,7 @@ interface UIOverlayProps {
 }
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
-  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, loadGlobalPreset, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth, quality, setQuality
+  room, setRoom, speakerGroups, selectedGroupId, updateGroup, updateSpeakerInGroup, addGroup, removeGroup, loadGlobalPreset, obstacles, addObstacle, updateObstacle, removeObstacle, steadyState, setSteadyState, visMode, setVisMode, volumetricDensity, setVolumetricDensity, planeY, setPlaneY, freqFilterEnabled, setFreqFilterEnabled, freqFilterTarget, setFreqFilterTarget, freqFilterBandwidth, setFreqFilterBandwidth, quality, setQuality
 }) => {
   const [splayAngle, setSplayAngle] = React.useState(2);
   const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set());
@@ -213,6 +217,114 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
               className="w-full accent-blue-500"
             />
           </div>
+        </section>
+
+        {/* Objects / Obstacles */}
+        <section className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Box className="w-4 h-4 text-indigo-400" />
+            <h2 className="font-semibold text-slate-200">Objects</h2>
+          </div>
+          <p className="text-[10px] text-slate-500 leading-tight">
+            Solid objects block sound waves, creating acoustic shadows.
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => addObstacle('box')}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 px-3 rounded flex justify-center items-center gap-1.5 transition-colors"
+            >
+              <Plus className="w-3 h-3" /> Box
+            </button>
+            <button
+              onClick={() => addObstacle('cylinder')}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 px-3 rounded flex justify-center items-center gap-1.5 transition-colors"
+            >
+              <Plus className="w-3 h-3" /> Cylinder
+            </button>
+          </div>
+
+          {obstacles.map((obs) => (
+            <div key={obs.id} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {obs.shape === 'box' ? (
+                    <Box className="w-3.5 h-3.5 text-indigo-400" />
+                  ) : (
+                    <Cylinder className="w-3.5 h-3.5 text-indigo-400" />
+                  )}
+                  <span className="text-xs font-medium text-slate-300 capitalize">{obs.shape}</span>
+                </div>
+                <button
+                  onClick={() => removeObstacle(obs.id)}
+                  className="text-slate-500 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {obs.shape === 'box' ? (
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-500">W</label>
+                    <input
+                      type="number" step={0.1} min={0.1} value={obs.size[0]}
+                      onChange={e => updateObstacle(obs.id, { size: [parseFloat(e.target.value) || 0.1, obs.size[1], obs.size[2]] })}
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-500">H</label>
+                    <input
+                      type="number" step={0.1} min={0.1} value={obs.size[1]}
+                      onChange={e => updateObstacle(obs.id, { size: [obs.size[0], parseFloat(e.target.value) || 0.1, obs.size[2]] })}
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-500">D</label>
+                    <input
+                      type="number" step={0.1} min={0.1} value={obs.size[2]}
+                      onChange={e => updateObstacle(obs.id, { size: [obs.size[0], obs.size[1], parseFloat(e.target.value) || 0.1] })}
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-500">Radius</label>
+                    <input
+                      type="number" step={0.1} min={0.1} value={obs.size[0]}
+                      onChange={e => { const r = parseFloat(e.target.value) || 0.1; updateObstacle(obs.id, { size: [r, obs.size[1], r] }); }}
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-500">Height</label>
+                    <input
+                      type="number" step={0.1} min={0.1} value={obs.size[1]}
+                      onChange={e => updateObstacle(obs.id, { size: [obs.size[0], parseFloat(e.target.value) || 0.1, obs.size[2]] })}
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-slate-400">
+                  <span>Rotation (Y)</span>
+                  <span>{(obs.rotation[1] * 180 / Math.PI).toFixed(0)}°</span>
+                </div>
+                <input
+                  type="range" min={-Math.PI} max={Math.PI} step={0.1}
+                  value={obs.rotation[1]}
+                  onChange={e => updateObstacle(obs.id, { rotation: [0, parseFloat(e.target.value), 0] })}
+                  className="w-full accent-indigo-500"
+                />
+              </div>
+            </div>
+          ))}
         </section>
 
         {/* Global Environments */}

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { extend } from '@react-three/fiber';
-import { MAX_SOURCES } from './SoundWaveShaderMaterial';
+import { MAX_SOURCES, MAX_OBSTACLES } from './SoundWaveShaderMaterial';
 
 const vertexShader = `
   varying vec3 vWorldPosition;
@@ -31,8 +31,43 @@ const fragmentShader = `
   uniform vec3 u_boxMax;
   uniform float u_density;
 
+  // Obstacle uniforms
+  uniform int u_numObstacles;
+  uniform vec3 u_obstaclePositions[${MAX_OBSTACLES}];
+  uniform vec3 u_obstacleRotations[${MAX_OBSTACLES}];
+  uniform vec3 u_obstacleSizes[${MAX_OBSTACLES}];
+  uniform int u_obstacleShapes[${MAX_OBSTACLES}]; // 0 = box, 1 = cylinder
+
   varying vec3 vWorldPosition;
   varying vec3 vLocalPosition;
+
+  // Rotate a point around Y axis
+  vec3 rotateY(vec3 p, float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
+  }
+
+  bool isInsideObstacle(vec3 pos) {
+    for (int i = 0; i < ${MAX_OBSTACLES}; i++) {
+      if (i >= u_numObstacles) break;
+      vec3 local = pos - u_obstaclePositions[i];
+      local = rotateY(local, -u_obstacleRotations[i].y);
+      vec3 halfSize = u_obstacleSizes[i] * 0.5;
+
+      if (u_obstacleShapes[i] == 0) {
+        if (abs(local.x) < halfSize.x && abs(local.y) < halfSize.y && abs(local.z) < halfSize.z) {
+          return true;
+        }
+      } else {
+        float r = halfSize.x;
+        if (local.x * local.x + local.z * local.z < r * r && abs(local.y) < halfSize.y) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   // Scientific heatmap
   vec3 heatmap(float v) {
@@ -61,6 +96,9 @@ const fragmentShader = `
   }
 
   float getAmplitudeAt(vec3 pos) {
+    // If inside an obstacle, return 0 (acoustic shadow)
+    if (isInsideObstacle(pos)) return 0.0;
+
     float realPart = 0.0;
     float imagPart = 0.0;
 
@@ -71,7 +109,7 @@ const fragmentShader = `
       float dist = distance(pos, sPos);
       dist = max(dist, 0.05);
 
-      float k = (2.0 * 3.14159265359 * u_frequencies[i]) / u_speedOfSound;
+      float k = (6.28318530718 * u_frequencies[i]) / u_speedOfSound;
       
       vec3 toPoint = normalize(pos - sPos);
       vec3 dir = u_sourceDirections[i];
@@ -86,7 +124,7 @@ const fragmentShader = `
       float arg = -k * dist + phase;
       
       if (!u_steadyState) {
-        float w = 2.0 * 3.14159265359 * u_frequencies[i];
+        float w = 6.28318530718 * u_frequencies[i];
         arg += w * u_time * 0.01; 
       }
 
@@ -97,7 +135,6 @@ const fragmentShader = `
     if (u_steadyState) {
       return sqrt(realPart * realPart + imagPart * imagPart) * 1.5; 
     } else {
-      // Use absolute value so empty space returns 0.0 (transparent) and waves decay over distance
       return abs(realPart) * 1.5;
     }
   }
@@ -116,21 +153,18 @@ const fragmentShader = `
     if (tNear > tFar) discard; // Missed the box
 
     // Raymarching loop
-    int maxSteps = u_raySteps;
-    float stepSize = (tFar - tNear) / float(maxSteps);
+    float stepSize = (tFar - tNear) / float(u_raySteps);
     
     vec3 colorAcc = vec3(0.0);
     float alphaAcc = 0.0;
 
     float t = tNear;
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 40; i++) {
       if (i >= u_raySteps) break;
       vec3 p = rayOrigin + rayDir * t;
       float amp = getAmplitudeAt(p);
       
-      // Calculate opacity contribution based on amplitude
       // Nodes (amp ~ 0) should be transparent. Antinodes (amp high) more opaque.
-      // u_density controls overall opacity scale.
       float opacity = smoothstep(0.1, 0.8, amp) * u_density;
       
       if (opacity > 0.01) {
@@ -156,8 +190,8 @@ export class VolumetricSoundMaterial extends THREE.ShaderMaterial {
       vertexShader,
       fragmentShader,
       transparent: true,
-      side: THREE.BackSide, // Render inside box correctly if camera enters it
-      depthWrite: false, // Don't write to depth buffer to avoid occluding speakers incorrectly
+      side: THREE.BackSide,
+      depthWrite: false,
       uniforms: {
         u_numSources: { value: 0 },
         u_sourcePositions: { value: Array.from({length: MAX_SOURCES}, () => new THREE.Vector3()) },
@@ -169,10 +203,16 @@ export class VolumetricSoundMaterial extends THREE.ShaderMaterial {
         u_time: { value: 0 },
         u_speedOfSound: { value: 343.0 },
         u_steadyState: { value: true },
-        u_raySteps: { value: 30 },
+        u_raySteps: { value: 24 },
         u_boxMin: { value: new THREE.Vector3(-5, -2, -4) },
         u_boxMax: { value: new THREE.Vector3(5, 2, 4) },
         u_density: { value: 0.15 },
+        // Obstacles
+        u_numObstacles: { value: 0 },
+        u_obstaclePositions: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()) },
+        u_obstacleRotations: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()) },
+        u_obstacleSizes: { value: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3(1,1,1)) },
+        u_obstacleShapes: { value: new Array(MAX_OBSTACLES).fill(0) },
       },
     });
   }

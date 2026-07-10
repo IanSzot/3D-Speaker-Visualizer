@@ -27,6 +27,16 @@ export interface RoomData {
   absorption: number; // 0.0 to 1.0
 }
 
+export type ObstacleShape = 'box' | 'cylinder';
+
+export interface ObstacleData {
+  id: string;
+  shape: ObstacleShape;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  size: [number, number, number]; // [width, height, depth] for box; [radius, height, radius] for cylinder
+}
+
 // For the shader, we need virtual sources representing the reflections
 export type SimulationQuality = 'low' | 'medium' | 'high';
 

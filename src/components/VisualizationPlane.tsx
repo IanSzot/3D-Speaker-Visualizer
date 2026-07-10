@@ -1,20 +1,13 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { VirtualSource } from '../types';
-import './SoundWaveShaderMaterial'; // Ensure it's imported to register the material
-import { MAX_SOURCES } from './SoundWaveShaderMaterial';
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      soundWaveMaterial: any;
-    }
-  }
-}
+import type { VirtualSource, ObstacleData } from '../types';
+import './SoundWaveShaderMaterial';
+import { MAX_SOURCES, MAX_OBSTACLES } from './SoundWaveShaderMaterial';
 
 interface VisualizationPlaneProps {
   virtualSources: VirtualSource[];
+  obstacles: ObstacleData[];
   width: number;
   depth: number;
   position?: [number, number, number];
@@ -25,6 +18,7 @@ interface VisualizationPlaneProps {
 
 export const VisualizationPlane: React.FC<VisualizationPlaneProps> = ({
   virtualSources,
+  obstacles,
   width,
   depth,
   position = [0, 0, 0],
@@ -43,6 +37,10 @@ export const VisualizationPlane: React.FC<VisualizationPlaneProps> = ({
       amplitudes: new Array(MAX_SOURCES).fill(0),
       phases: new Array(MAX_SOURCES).fill(0),
       directivity: new Array(MAX_SOURCES).fill(1),
+      obstaclePositions: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()),
+      obstacleRotations: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3()),
+      obstacleSizes: Array.from({length: MAX_OBSTACLES}, () => new THREE.Vector3(1,1,1)),
+      obstacleShapes: new Array(MAX_OBSTACLES).fill(0),
     };
   }, []);
 
@@ -73,6 +71,21 @@ export const VisualizationPlane: React.FC<VisualizationPlaneProps> = ({
       mat.uniforms.u_time.value = state.clock.elapsedTime;
       mat.uniforms.u_steadyState.value = steadyState;
       mat.uniforms.u_speedOfSound.value = speedOfSound;
+
+      // Obstacles
+      const numObs = Math.min(obstacles.length, MAX_OBSTACLES);
+      for (let i = 0; i < numObs; i++) {
+        const obs = obstacles[i];
+        uniforms.obstaclePositions[i].set(...obs.position);
+        uniforms.obstacleRotations[i].set(...obs.rotation);
+        uniforms.obstacleSizes[i].set(...obs.size);
+        uniforms.obstacleShapes[i] = obs.shape === 'box' ? 0 : 1;
+      }
+      mat.uniforms.u_numObstacles.value = numObs;
+      mat.uniforms.u_obstaclePositions.value = uniforms.obstaclePositions;
+      mat.uniforms.u_obstacleRotations.value = uniforms.obstacleRotations;
+      mat.uniforms.u_obstacleSizes.value = uniforms.obstacleSizes;
+      mat.uniforms.u_obstacleShapes.value = uniforms.obstacleShapes;
     }
   });
 
